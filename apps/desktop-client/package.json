@@ -1,0 +1,31 @@
+{
+  "name": "@remote-control/desktop-client",
+  "version": "1.1.4",
+  "license": "AGPL-3.0",
+  "description": "Windows desktop client for Remote Control App.",
+  "author": "ELORA2",
+  "main": "src/main/index.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "test:lock": "electron test/lock-test.js",
+    "test:lock:native": "electron test/lock-test.js --native-only",
+    "poc:censor": "electron test/ai-censor-poc.js",
+    "test:censor-detector": "electron test/ai-censor-detector-test.js",
+    "test:censor-live": "electron test/ai-censor-live-smoke.js"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.2",
+    "uiohook-napi": "^1.5.5"
+  },
+  "devDependencies": {
+    "electron": "^29.0.0",
+    "electron-builder": "^24.9.1",
+    "node-addon-api": "^1.7.2",
+    "node-gyp": "^12.3.0",
+    "onnxruntime-node": "^1.27.0"
+  },
+  "build": {
+    "extends": "./electron-builder.yml"
+  }
+}

@@ -1,0 +1,69 @@
+# Dependencies
+node_modules/
+.npm
+
+# Build outputs
+dist/
+out/
+build/
+.cache/
+apps/desktop-client/test/models/*.onnx
+apps/desktop-client/test/out/
+
+# Electron
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.rpm
+*.snap
+*.pkg
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local
+config.json
+
+# Runtime data
+*.db
+*.db-wal
+*.db-shm
+apps/server/data/
+
+# Credentials and private keys
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.vs/
+.idea/
+.claude/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local/private project material not required to build the application
+Solucion_Examen_IngSistemas_I.pdf
+docs/*.docx
+scripts/create-censor-quote.js
+scripts/create-censor-development-plan.js
+setup_ssh_key.py
+ELORA2Remote Control Appappsdesktop-clientassets/

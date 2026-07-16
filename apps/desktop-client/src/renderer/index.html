@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Remote Control Client</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0F1117;
+      color: #fff;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+      user-select: none;
+    }
+
+    .bar { width: 36px; height: 3px; background: #E94560; border-radius: 2px; margin-bottom: .9rem; }
+    h1   { font-size: 1.3rem; font-weight: 700; }
+    .sub { font-size: .78rem; color: #4b5563; margin-top: .2rem; margin-bottom: 2rem; }
+
+    .card {
+      background: #1A1D27;
+      border: 1px solid #1f2937;
+      border-radius: 16px;
+      padding: 2rem 1.75rem;
+      width: 100%;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    /* ── Code input ── */
+    .code-label {
+      font-size: .68rem;
+      font-weight: 700;
+      color: #4b5563;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+      margin-bottom: .75rem;
+    }
+
+    #code-input {
+      font-family: 'Courier New', monospace;
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: .35em;
+      color: #E94560;
+      background: #0F1117;
+      border: 1px solid #374151;
+      border-radius: 10px;
+      padding: .7rem 1rem;
+      margin-bottom: 1rem;
+      width: 100%;
+      text-align: center;
+      text-transform: uppercase;
+      outline: none;
+      transition: border-color .2s;
+    }
+    #code-input:focus        { border-color: #E94560; }
+    #code-input::placeholder { color: #374151; font-size: 1rem; letter-spacing: .05em; font-family: inherit; }
+    #code-input:disabled     { opacity: .4; cursor: not-allowed; }
+
+    /* ── Join button ── */
+    #join-btn {
+      width: 100%;
+      padding: .65rem 1rem;
+      border-radius: 10px;
+      background: #E94560;
+      color: #fff;
+      font-weight: 700;
+      font-size: .88rem;
+      border: none;
+      cursor: pointer;
+      margin-bottom: 1.5rem;
+      transition: filter .2s, opacity .2s;
+    }
+    #join-btn:hover:not(:disabled) { filter: brightness(1.1); }
+    #join-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Status pill ── */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      padding: .4rem .85rem;
+      border-radius: 999px;
+      font-size: .76rem;
+      font-weight: 600;
+      border: 1px solid transparent;
+      transition: all .3s;
+    }
+    .status.connecting   { background: #1a1a2e; border-color: #374151; color: #6b7280; }
+    .status.pending      { background: #1c1700; border-color: #92400e; color: #fbbf24; }
+    .status.active       { background: #052e16; border-color: #166534; color: #4ade80; }
+    .status.error,
+    .status.disconnected,
+    .status.reconnecting { background: #1c0505; border-color: #7f1d1d; color: #f87171; }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .dot.pulse { animation: pulse 1.5s ease-in-out infinite; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .25; }
+    }
+
+    .hint {
+      margin-top: 1.5rem;
+      font-size: .72rem;
+      color: #374151;
+      line-height: 1.5;
+    }
+
+    .source-link {
+      position: fixed;
+      right: 14px;
+      bottom: 10px;
+      color: #64748b;
+      font-size: 11px;
+      text-decoration: none;
+    }
+    .source-link:hover { color: #94a3b8; text-decoration: underline; }
+
+    /* ── Leave session ── */
+    #leave-btn {
+      font-size: 12px;
+      color: #888;
+      text-decoration: underline;
+      margin-bottom: 1rem;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="bar"></div>
+  <h1>Remote Control</h1>
+  <p class="sub">Client Device <span id="app-version"></span></p>
+
+  <div class="card">
+    <p class="code-label">Código de sesión</p>
+
+    <input
+      type="text"
+      id="code-input"
+      maxlength="6"
+      placeholder="XXXXXX"
+      autocomplete="off"
+      spellcheck="false"
+    />
+
+    <a href="#" id="leave-btn">Salir de sesión</a>
+
+    <button id="join-btn" disabled>Unirse a sesión</button>
+
+    <div class="status connecting" id="status">
+      <span class="dot pulse" id="dot"></span>
+      <span id="status-text">Conectando al servidor...</span>
+    </div>
+
+    <p class="hint" id="hint"></p>
+  </div>
+
+  <a href="#" class="source-link" id="source-link">Código fuente y licencias · AGPL-3.0</a>
+
+  <script>
+    const { ipcRenderer } = require('electron');
+    document.getElementById('app-version').textContent = `v${require('../../package.json').version}`;
+
+    const codeInput  = document.getElementById('code-input');
+    const joinBtn    = document.getElementById('join-btn');
+    const statusEl   = document.getElementById('status');
+    const dotEl      = document.getElementById('dot');
+    const statusText = document.getElementById('status-text');
+    const hintEl     = document.getElementById('hint');
+    const leaveBtn   = document.getElementById('leave-btn');
+    const sourceLink = document.getElementById('source-link');
+
+    sourceLink.addEventListener('click', (event) => {
+      event.preventDefault();
+      ipcRenderer.invoke('open-source-code');
+    });
+
+    // ── Input handling ────────────────────────────────────────
+    codeInput.addEventListener('input', () => {
+      codeInput.value = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+      joinBtn.disabled = codeInput.value.length !== 6;
+    });
+
+    codeInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !joinBtn.disabled) joinBtn.click();
+    });
+
+    // ── Join button ───────────────────────────────────────────
+    joinBtn.addEventListener('click', () => {
+      const code = codeInput.value.trim();
+      if (code.length !== 6) return;
+      joinBtn.disabled = true;
+      codeInput.disabled = true;
+      ipcRenderer.invoke('join-session', code);
+    });
+
+    // ── Leave session ─────────────────────────────────────────
+    leaveBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      ipcRenderer.invoke('leave-session');
+    });
+
+    // ── Status updates from main ──────────────────────────────
+    function setStatus(state, message) {
+      statusEl.className = 'status ' + state;
+      dotEl.className    = 'dot' + (['pending', 'connecting', 'reconnecting'].includes(state) ? ' pulse' : '');
+      statusText.textContent = message;
+      leaveBtn.style.display = (state === 'active' || state === 'pending') ? 'inline' : 'none';
+
+      // Habilitar/deshabilitar input según estado de conexión
+      const serverReady = state === 'pending';
+      codeInput.disabled = !serverReady;
+      if (serverReady && codeInput.value.length !== 6) joinBtn.disabled = true;
+      if (!serverReady) joinBtn.disabled = true;
+    }
+
+    ipcRenderer.on('status', (_e, { state, message }) => {
+      switch (state) {
+        case 'connecting':
+          codeInput.disabled = true;
+          joinBtn.disabled   = true;
+          setStatus('connecting', 'Conectando al servidor...');
+          break;
+        case 'pending':
+          codeInput.disabled = false;
+          codeInput.value    = '';
+          joinBtn.disabled   = true;
+          setStatus('pending', message || 'Ingresa un código de sesión');
+          hintEl.textContent = '';
+          break;
+        case 'active':
+          codeInput.disabled = true;
+          setStatus('active', 'Sesión activa');
+          hintEl.textContent = 'El operador está conectado y puede enviar comandos.';
+          break;
+        case 'error':
+          codeInput.disabled = false;
+          joinBtn.disabled   = codeInput.value.length !== 6;
+          setStatus('error', message || 'Error');
+          break;
+        case 'disconnected':
+        case 'reconnecting':
+          codeInput.disabled = true;
+          joinBtn.disabled   = true;
+          setStatus('reconnecting', message || 'Reconectando...');
+          hintEl.textContent = '';
+          break;
+      }
+    });
+  </script>
+</body>
+</html>
