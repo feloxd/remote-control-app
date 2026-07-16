@@ -10,14 +10,21 @@ files:
   - src/**/*
   - package.json
   - "!node_modules/.cache"
+  - "!node_modules/onnxruntime-node/bin/napi-v6/darwin/**"
+  - "!node_modules/onnxruntime-node/bin/napi-v6/linux/**"
+  - "!node_modules/onnxruntime-node/bin/napi-v6/win32/arm64/**"
 
 extraResources:
+  - from: models/nudenet-320n.onnx
+    to: models/nudenet-320n.onnx
   - from: ../../LICENSE
     to: licenses/LICENSE
   - from: ../../NOTICE
     to: licenses/NOTICE
   - from: ../../THIRD_PARTY_NOTICES.md
     to: licenses/THIRD_PARTY_NOTICES.md
+  - from: ../../licenses/ONNXRUNTIME-LICENSE.txt
+    to: licenses/ONNXRUNTIME-LICENSE.txt
 
 # Native .node addons must live on the real filesystem (a require() inside an
 # asar archive can't dlopen a binary), so we keep them unpacked into
@@ -25,6 +32,7 @@ extraResources:
 # addon (the WH_KEYBOARD_LL system-wide blocker).
 asarUnpack:
   - "**/node_modules/uiohook-napi/**"
+  - "**/node_modules/onnxruntime-node/**"
   - "**/src/native/*.node"
 
 win:

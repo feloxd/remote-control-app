@@ -3,10 +3,9 @@
 ## Status
 
 Step 2 integrates the local ONNX detector into the real Electron screen-censor
-loop. It remains a development beta: the model and ONNX runtime are not bundled
-in the production installer until the public corresponding-source URL and
-release packaging are complete. The project and NudeNet are treated as
-AGPL-3.0-covered works.
+loop. The model and ONNX Runtime are bundled in the Windows test installer. The
+project, packaged model, and NudeNet integration are published as AGPL-3.0
+corresponding source.
 
 When the AI runtime or model is unavailable, the client can either use the
 legacy skin-color detector or leave the screen unchanged. Full-screen fallback
@@ -55,9 +54,9 @@ The detector looks for the model in this order:
 
 1. Explicit `modelPath` in the action payload.
 2. `CENSOR_MODEL_PATH` environment variable.
-3. Packaged `resources/models/nudenet-320n.onnx` (reserved for a future
-   AGPL-compliant source release).
-4. Development `test/models/nudenet-320n.onnx`.
+3. Packaged `resources/models/nudenet-320n.onnx`.
+4. Versioned development `models/nudenet-320n.onnx`.
+5. Legacy development `test/models/nudenet-320n.onnx`.
 
 Useful checks:
 
@@ -75,15 +74,18 @@ npm.cmd run test:censor-live --workspace=@remote-control/desktop-client
 - Real desktop capture + overlay smoke test: 15.49 ms inference, clean start
   and stop.
 - Dashboard production build: passed.
-- Windows NSIS client build: passed; installer size 77,282,630 bytes.
-- Packaged ASAR contains the integration code but excludes the ONNX model and
-  runtime, so the current installer safely uses the configured fallback.
+- The Windows NSIS installer includes the model under `resources/models/`.
+- ONNX Runtime native libraries are unpacked from ASAR for Windows loading.
+- Version 1.2.0 installer: 107,706,546 bytes (102.72 MiB).
+- Packaged Windows x64 runtime: 61.48 MiB; unused macOS, Linux, and ARM64
+  binaries are excluded.
+- Packaged runtime smoke test loaded input `images` and output `output0` from
+  the versioned model successfully.
 
 ## Remaining gates
 
-- Publish the exact corresponding source and model revision under AGPL-3.0.
-- Decide whether the roughly 258 MiB unpacked native runtime is acceptable or
-  benchmark a smaller WebAssembly/DirectML packaging option.
+- Measure the final installer/runtime footprint and benchmark a smaller
+  WebAssembly or DirectML packaging option if distribution size is excessive.
 - Test end-to-end CPU and memory on representative target PCs and multiple
   monitors.
 - Build a consented validation set and measure false positives/negatives.

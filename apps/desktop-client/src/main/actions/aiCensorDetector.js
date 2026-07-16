@@ -42,6 +42,8 @@ function modelCandidates(explicitPath) {
     explicitPath,
     process.env.CENSOR_MODEL_PATH,
     app.isPackaged ? path.join(process.resourcesPath, 'models', 'nudenet-320n.onnx') : '',
+    !app.isPackaged ? path.join(app.getAppPath(), 'models', 'nudenet-320n.onnx') : '',
+    !app.isPackaged ? path.join(__dirname, '..', '..', '..', 'models', 'nudenet-320n.onnx') : '',
     !app.isPackaged ? path.join(app.getAppPath(), 'test', 'models', 'nudenet-320n.onnx') : '',
     !app.isPackaged ? path.join(__dirname, '..', '..', '..', 'test', 'models', 'nudenet-320n.onnx') : '',
   ];
@@ -52,7 +54,7 @@ function resolveModelPath(explicitPath) {
   const modelPath = modelCandidates(explicitPath).find((candidate) => fs.existsSync(candidate));
   if (!modelPath) {
     throw new Error(
-      'AI censor model not found. Set CENSOR_MODEL_PATH or place nudenet-320n.onnx in test/models.',
+      'AI censor model not found. Set CENSOR_MODEL_PATH or place nudenet-320n.onnx in models/.',
     );
   }
   return modelPath;

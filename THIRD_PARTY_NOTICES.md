@@ -13,9 +13,9 @@ their respective copyrights and licenses.
   `C15D8273ADAD2D0A92F014CC69AB2D6C311A06777A55545F2C4EB46F51911F0F`
 - License published by the upstream project: GNU AGPL-3.0
 
-The production release must provide the exact model weights and the
-corresponding upstream source/revision alongside the source for this
-application.
+The versioned model weights are stored at
+`apps/desktop-client/models/nudenet-320n.onnx`. The revision and hash above
+identify the corresponding upstream source shipped by the Windows test release.
 
 ## ONNX Runtime
 

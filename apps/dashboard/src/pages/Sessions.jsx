@@ -1,31 +1,32 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 import useSessionStore from '../store/sessionStore';
+import Icon from '../components/Icon';
 
 export default function Sessions() {
-  const [inputCode, setInputCode]     = useState('');
-  const [connecting, setConnecting]   = useState(false);
-  const [error, setError]             = useState('');
-  const [creating, setCreating]       = useState(false);
+  const [inputCode, setInputCode] = useState('');
+  const [connecting, setConnecting] = useState(false);
+  const [error, setError] = useState('');
+  const [creating, setCreating] = useState(false);
   const [createdCode, setCreatedCode] = useState(null);
   const [createError, setCreateError] = useState('');
   const socketRef = useRef(null);
 
-  const token       = useSessionStore((s) => s.token);
-  const sessionCode = useSessionStore((s) => s.sessionCode);
-  const setSession  = useSessionStore((s) => s.setSession);
-  const logout      = useSessionStore((s) => s.logout);
-  const navigate    = useNavigate();
+  const token = useSessionStore((state) => state.token);
+  const sessionCode = useSessionStore((state) => state.sessionCode);
+  const setSession = useSessionStore((state) => state.setSession);
+  const logout = useSessionStore((state) => state.logout);
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (sessionCode) setInputCode(sessionCode);
     return () => socketRef.current?.disconnect();
-  }, []);
+  }, [sessionCode]);
 
-  const handleCodeInput = (e) => {
-    setInputCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
+  const handleCodeInput = (event) => {
+    setInputCode(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6));
     setError('');
   };
 
@@ -34,18 +35,15 @@ export default function Sessions() {
     setCreateError('');
     setCreatedCode(null);
     try {
-      const { data } = await axios.post('/sessions/create', {}, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const { data } = await axios.post('/sessions/create', {}, { headers: { Authorization: `Bearer ${token}` } });
       setCreatedCode(data.code);
-    } catch (err) {
-      setCreateError(err.response?.data?.error || 'No se pudo crear la sesión');
+    } catch (requestError) {
+      setCreateError(requestError.response?.data?.error || 'No se pudo crear la sesión');
     } finally {
       setCreating(false);
     }
   };
 
-  // codeOverride permite conectar directamente con un código conocido
   const handleConnect = (codeOverride) => {
     const code = (codeOverride || inputCode).trim();
     if (code.length !== 6) {
@@ -55,7 +53,6 @@ export default function Sessions() {
 
     setConnecting(true);
     setError('');
-
     const socket = io('/dash', { auth: { token }, timeout: 8000 });
     socketRef.current = socket;
 
@@ -63,21 +60,21 @@ export default function Sessions() {
       socket.disconnect();
       socketRef.current = null;
       setConnecting(false);
-      setError('Connection timed out. Make sure the server is running.');
+      setError('La conexión tardó demasiado. Comprueba el servidor.');
     }, 8000);
 
-    const done = (errMsg) => {
+    const done = (message) => {
       clearTimeout(failTimer);
       socket.disconnect();
       socketRef.current = null;
       setConnecting(false);
-      if (errMsg) setError(errMsg);
+      if (message) setError(message);
     };
 
-    socket.on('connect',       ()                       => { socket.emit('join_session', code); });
+    socket.on('connect', () => socket.emit('join_session', code));
     socket.on('session_joined', ({ code: joined, status }) => { setSession(joined, status); done(null); });
-    socket.on('error',          ({ message })            => { done(message); });
-    socket.on('connect_error',  ()                       => { done('Cannot reach server. Is it running?'); });
+    socket.on('error', ({ message }) => done(message));
+    socket.on('connect_error', () => done('No se pudo contactar al servidor.'));
   };
 
   const handleDisconnect = () => {
@@ -89,162 +86,62 @@ export default function Sessions() {
 
   const handleLogout = () => { logout(); navigate('/'); };
 
-  const isConnected = !!sessionCode;
-
   return (
-    <div className="min-h-screen bg-surface p-8">
-      <div className="max-w-md mx-auto">
+    <div className="sessions-page">
+      <header className="sessions-header">
+        <div className="command-brand">
+          <span className="command-brand__mark"><Icon name="monitor" size={19} /></span>
+          <strong>Remote Control</strong><span>Dashboard</span>
+        </div>
+        <button onClick={handleLogout}><Icon name="logout" size={16} /> Cerrar sesión</button>
+      </header>
 
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="w-8 h-0.5 bg-accent rounded mb-3" />
-            <h1 className="text-xl font-bold text-white">Connect to Client</h1>
-          </div>
-          <button
-            onClick={handleLogout}
-            className="text-sm text-gray-500 hover:text-gray-300 transition-colors"
-          >
-            Logout
-          </button>
+      <main className="sessions-content">
+        <div className="sessions-title">
+          <div><p className="eyebrow">Centro de conexiones</p><h1>Selecciona un cliente</h1><span>Crea una sesión nueva o conecta con un código existente.</span></div>
+          <div className="system-health"><i /> Servidor disponible</div>
         </div>
 
-        <div className="rounded-2xl border border-gray-800 bg-card p-6">
-
-          {!isConnected ? (
-            <div className="space-y-6">
-
-              {/* ── Crear sesión desde el dashboard ── */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                  Crear sesión
-                </p>
-
-                <button
-                  onClick={handleCreateSession}
-                  disabled={creating}
-                  className="w-full py-2.5 rounded-lg font-semibold text-white bg-accent
-                             hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-all"
-                >
-                  {creating ? 'Creando...' : 'Crear Nueva Sesión'}
-                </button>
-
-                {createError && (
-                  <div className="mt-3 px-4 py-2.5 rounded-lg bg-red-900/20 border border-red-800/50">
-                    <p className="text-sm text-red-400">{createError}</p>
-                  </div>
-                )}
-
-                {createdCode && (
-                  <div className="mt-4 p-5 rounded-xl bg-surface border border-gray-800 text-center">
-                    <p className="text-4xl font-mono font-bold tracking-[0.3em] text-accent mb-2">
-                      {createdCode}
-                    </p>
-                    <p className="text-sm text-gray-500 mb-4">
-                      Comparte este código con tu cliente
-                    </p>
-                    <button
-                      onClick={() => handleConnect(createdCode)}
-                      disabled={connecting}
-                      className="w-full py-2.5 rounded-lg font-semibold text-white bg-accent
-                                 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed
-                                 transition-all"
-                    >
-                      {connecting ? 'Conectando...' : 'Conectar'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              {/* ── Divider ── */}
-              <div className="flex items-center gap-3">
-                <div className="flex-1 h-px bg-gray-800" />
-                <span className="text-xs text-gray-700 uppercase tracking-wider">o</span>
-                <div className="flex-1 h-px bg-gray-800" />
-              </div>
-
-              {/* ── Ingresar código del cliente ── */}
-              <div>
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
-                  Session Code
-                </p>
-                <p className="text-gray-600 text-sm mb-5">
-                  Ask the client for the code displayed on their screen and enter it below.
-                </p>
-
-                <input
-                  type="text"
-                  value={inputCode}
-                  onChange={handleCodeInput}
-                  onKeyDown={(e) => e.key === 'Enter' && handleConnect()}
-                  maxLength={6}
-                  disabled={connecting}
-                  placeholder="XXXXXX"
-                  autoFocus
-                  className="w-full px-4 py-3 mb-4 rounded-lg bg-surface border border-gray-700
-                             font-mono text-2xl font-bold text-center tracking-[0.4em] uppercase
-                             text-accent placeholder-gray-700
-                             focus:outline-none focus:border-accent transition-colors
-                             disabled:opacity-50"
-                />
-
-                {error && (
-                  <div className="px-4 py-2.5 rounded-lg bg-red-900/20 border border-red-800/50 mb-4">
-                    <p className="text-sm text-red-400">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  onClick={() => handleConnect()}
-                  disabled={connecting || inputCode.length !== 6}
-                  className="w-full py-2.5 rounded-lg font-semibold text-white bg-accent
-                             hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed
-                             transition-all"
-                >
-                  {connecting ? 'Connecting...' : 'Connect'}
-                </button>
-              </div>
-
+        {sessionCode ? (
+          <section className="active-session-card">
+            <span className="active-session-card__icon"><Icon name="monitor" size={25} /></span>
+            <div><p>Sesión preparada</p><strong>{sessionCode}</strong><span>El panel conservará este código mientras trabajas.</span></div>
+            <div className="active-session-card__actions">
+              <button onClick={() => navigate('/control')}>Abrir panel de control <Icon name="chevronLeft" className="rotate-180" /></button>
+              <button onClick={handleDisconnect}>Cambiar sesión</button>
             </div>
-
-          ) : (
-
-            /* ── Sesión activa ── */
-            <div className="space-y-4">
-              <div className="p-5 rounded-xl bg-surface border border-gray-800">
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs text-gray-600 uppercase tracking-widest">Client Session</p>
-                  <span className="flex items-center gap-1.5 text-xs text-green-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                    Connected
-                  </span>
+          </section>
+        ) : (
+          <div className="session-grid">
+            <section className="session-card session-card--primary">
+              <span className="session-card__icon"><Icon name="users" /></span>
+              <p className="eyebrow">Nueva conexión</p>
+              <h2>Crear una sesión</h2>
+              <p>Genera un código temporal y compártelo con el equipo cliente.</p>
+              <button onClick={handleCreateSession} disabled={creating}>{creating ? 'Creando…' : 'Generar código de sesión'}</button>
+              {createError && <div className="form-error">{createError}</div>}
+              {createdCode && (
+                <div className="generated-code">
+                  <span>Código listo</span><strong>{createdCode}</strong>
+                  <button onClick={() => handleConnect(createdCode)} disabled={connecting}>{connecting ? 'Conectando…' : 'Abrir esta sesión'}</button>
                 </div>
-                <p className="text-4xl font-mono font-bold tracking-[0.3em] text-accent">
-                  {sessionCode}
-                </p>
-              </div>
+              )}
+            </section>
 
-              <button
-                onClick={() => navigate('/control')}
-                className="w-full py-2.5 rounded-lg font-semibold text-white bg-accent
-                           hover:brightness-110 transition-all"
-              >
-                Open Control Panel
-              </button>
+            <section className="session-card">
+              <span className="session-card__icon"><Icon name="link" /></span>
+              <p className="eyebrow">Código existente</p>
+              <h2>Conectar con un cliente</h2>
+              <p>Introduce los seis caracteres que aparecen en el cliente de Windows.</p>
+              <input value={inputCode} onChange={handleCodeInput} onKeyDown={(event) => event.key === 'Enter' && handleConnect()} maxLength={6} placeholder="XXXXXX" autoFocus />
+              {error && <div className="form-error">{error}</div>}
+              <button onClick={() => handleConnect()} disabled={connecting || inputCode.length !== 6}>{connecting ? 'Conectando…' : 'Conectar al cliente'}</button>
+            </section>
+          </div>
+        )}
+      </main>
 
-              <button
-                onClick={handleDisconnect}
-                className="w-full py-2.5 rounded-lg font-medium text-gray-500 border border-gray-800
-                           hover:border-gray-600 hover:text-gray-300 transition-all"
-              >
-                Connect to different session
-              </button>
-            </div>
-          )}
-
-        </div>
-      </div>
+      <footer className="sessions-footer"><span>Remote Control App · v1.1</span><a href="/source" target="_blank" rel="noreferrer">Código fuente · AGPL-3.0</a></footer>
     </div>
   );
 }

@@ -9,6 +9,7 @@ const cursor   = require('./actions/cursor');
 const keyboard = require('./actions/keyboard');
 const screen   = require('./actions/screen');
 const lock     = require('./actions/lock');
+const fileTransfer = require('./fileTransfer');
 
 const DEFAULT_SERVER_URL = 'http://178.156.186.132';
 
@@ -45,6 +46,9 @@ function clearRemoteActions() {
   keyboard.unlockKeyboard();
   lock.clearFilters().catch((err) =>
     console.error('[cleanup] clearFilters failed:', err.message),
+  );
+  fileTransfer.abortAllTransfers().catch((err) =>
+    console.error('[cleanup] file transfer cleanup failed:', err.message),
   );
 }
 
@@ -133,6 +137,43 @@ function connectSocket(mainWin) {
       console.error(`[action] ${action} failed:`, err.message);
       socket.emit('action_ack', { action, success: false, error: err.message });
     }
+  });
+
+  const transferStatus = (transferId, state, details = {}) => {
+    socket.emit('file_transfer_status', { transferId, state, ...details });
+  };
+
+  socket.on('file_transfer_start', async (metadata) => {
+    try {
+      const result = await fileTransfer.startTransfer(metadata);
+      transferStatus(metadata.transferId, 'receiving', { name: result.name, directory: result.directory });
+    } catch (error) {
+      transferStatus(metadata?.transferId, 'error', { error: error.message });
+    }
+  });
+
+  socket.on('file_transfer_chunk', async (payload) => {
+    try {
+      const result = await fileTransfer.writeChunk(payload);
+      transferStatus(payload.transferId, 'receiving', result);
+    } catch (error) {
+      await fileTransfer.abortTransfer(payload?.transferId);
+      transferStatus(payload?.transferId, 'error', { error: error.message });
+    }
+  });
+
+  socket.on('file_transfer_end', async ({ transferId } = {}) => {
+    try {
+      const result = await fileTransfer.finishTransfer({ transferId });
+      transferStatus(transferId, 'complete', result);
+    } catch (error) {
+      transferStatus(transferId, 'error', { error: error.message });
+    }
+  });
+
+  socket.on('file_transfer_cancel', async ({ transferId } = {}) => {
+    await fileTransfer.abortTransfer(transferId);
+    transferStatus(transferId, 'cancelled');
   });
 
   socket.on('error', ({ message }) => {

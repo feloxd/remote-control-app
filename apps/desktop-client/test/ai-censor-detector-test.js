@@ -12,6 +12,7 @@ async function run() {
   if (image.isEmpty()) throw new Error(`Could not decode image: ${imagePath}`);
   const result = await detector.detectExplicitRegions(image, {
     confidence: Number(process.argv[3]) || 0.35,
+    modelPath: process.env.CENSOR_MODEL_PATH || path.join(__dirname, '..', 'models', 'nudenet-320n.onnx'),
   });
   console.log(JSON.stringify({
     frameSize: result.frameSize,

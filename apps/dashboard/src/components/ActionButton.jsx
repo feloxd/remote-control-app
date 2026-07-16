@@ -1,53 +1,78 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import PayloadModal, { needsModal } from './PayloadModal';
+import Icon from './Icon';
+import useSettingsStore from '../store/settingsStore';
 
-const STYLES = {
-  idle:    'border-gray-700 text-gray-300 bg-surface hover:border-gray-500 hover:text-white',
-  loading: 'border-accent text-accent bg-surface opacity-70 cursor-wait',
-  success: 'border-green-600 text-green-400 bg-green-900/20',
-  error:   'border-red-700 text-red-400 bg-red-900/20',
+const ACTION_META = {
+  open_url: ['Abrir URL', 'globe'],
+  show_image: ['Mostrar imagen', 'image'],
+  close_image: ['Cerrar imagen', 'eyeOff'],
+  play_video: ['Reproducir video', 'play'],
+  close_video: ['Cerrar video', 'eyeOff'],
+  play_audio: ['Reproducir audio', 'play'],
+  stop_audio: ['Detener audio', 'eyeOff'],
+  show_overlay: ['Mostrar overlay', 'grid'],
+  hide_overlay: ['Ocultar overlay', 'eyeOff'],
+  pixelate_screen: ['Pixelar pantalla', 'pixels'],
+  censor_screen: ['Censor IA', 'shield'],
+  show_text: ['Mostrar texto', 'type'],
+  blackout_screen: ['Pantalla negra', 'monitor'],
+  hide_cursor: ['Ocultar cursor', 'mouse'],
+  lock_keyboard: ['Bloquear teclado', 'lock'],
+  unlock_keyboard: ['Desbloquear teclado', 'lock'],
+  lock_screen: ['Bloquear pantalla', 'lock'],
+  unlock_screen: ['Desbloquear pantalla', 'monitor'],
+  take_screenshot: ['Captura', 'camera'],
+  filter_sites: ['Filtrar sitios', 'globe'],
+  clear_filters: ['Limpiar filtros', 'globe'],
 };
 
-export default function ActionButton({ action, disabled, onDispatch }) {
-  const [btnState, setBtnState] = useState('idle');
-  const [showModal, setShowModal] = useState(false);
+const STATES = {
+  idle: '',
+  loading: 'is-loading',
+  success: 'is-success',
+  error: 'is-error',
+};
 
-  const label = action.replace(/_/g, ' ');
+export default function ActionButton({ action, disabled, onDispatch, variant = 'sidebar' }) {
+  const [buttonState, setButtonState] = useState('idle');
+  const [showModal, setShowModal] = useState(false);
+  const confirmSensitiveActions = useSettingsStore((state) => state.confirmSensitiveActions);
+  const [label, icon] = ACTION_META[action] || [action.replace(/_/g, ' '), 'bolt'];
 
   const fire = useCallback(async (payload = {}) => {
-    setBtnState('loading');
+    setButtonState('loading');
     try {
       const { success } = await onDispatch(action, payload);
-      setBtnState(success ? 'success' : 'error');
+      setButtonState(success ? 'success' : 'error');
     } catch {
-      setBtnState('error');
+      setButtonState('error');
     }
-    setTimeout(() => setBtnState('idle'), 1500);
+    setTimeout(() => setButtonState('idle'), 1500);
   }, [onDispatch, action]);
 
   const handleClick = useCallback(() => {
-    if (btnState !== 'idle' || disabled) return;
-    if (needsModal(action)) {
-      setShowModal(true);
-    } else {
-      fire();
-    }
-  }, [btnState, disabled, action, fire]);
+    if (buttonState !== 'idle' || disabled) return;
+    if (
+      confirmSensitiveActions
+      && action === 'blackout_screen'
+      && !window.confirm('¿Confirmas que deseas activar la pantalla negra en el cliente?')
+    ) return;
+    if (needsModal(action)) setShowModal(true);
+    else fire();
+  }, [buttonState, disabled, action, fire, confirmSensitiveActions]);
 
   return (
     <>
       <button
+        type="button"
         onClick={handleClick}
-        disabled={disabled || btnState === 'loading'}
-        className={`
-          px-4 py-2 rounded-lg text-sm font-medium border capitalize
-          transition-all duration-200
-          disabled:opacity-40 disabled:cursor-not-allowed
-          ${STYLES[btnState]}
-        `}
-        title={disabled ? 'Waiting for client to connect' : action}
+        disabled={disabled || buttonState === 'loading'}
+        className={`action-control action-control--${variant} ${STATES[buttonState]}`}
+        title={disabled ? 'Esperando conexión del cliente' : label}
       >
-        {btnState === 'loading' ? '...' : label}
+        <Icon name={buttonState === 'loading' ? 'activity' : icon} size={variant === 'header' ? 17 : 16} />
+        <span>{buttonState === 'loading' ? 'Procesando…' : label}</span>
       </button>
 
       {showModal && (

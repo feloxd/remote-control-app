@@ -35,6 +35,10 @@ function initClientHandler(io, clientNsp, dashNsp, socket) {
     }
   });
 
+  socket.on('file_transfer_status', (status = {}) => {
+    if (socket.sessionCode) dashNsp.to(socket.sessionCode).emit('file_transfer_status', status);
+  });
+
   socket.on('disconnect', () => {
     console.log(`[client] disconnected: ${socket.id}`);
     if (socket.sessionCode) {
