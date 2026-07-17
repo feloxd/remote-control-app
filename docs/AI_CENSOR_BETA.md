@@ -82,6 +82,22 @@ npm.cmd run test:censor-live --workspace=@remote-control/desktop-client
 - Packaged runtime smoke test loaded input `images` and output `output0` from
   the versioned model successfully.
 
+## Version 1.2.1 regional coverage hotfix
+
+- Explicit-region padding is class-aware instead of a fixed 8% margin:
+  exposed breasts receive 30% horizontal and 25% vertical padding, explicit
+  genital/anus regions receive 24%, and exposed buttocks receive 18%.
+- Every class also has a minimum pixel margin so small detections do not leave
+  exposed edges.
+- A high-confidence exposed-breast detection can recover a geometrically
+  related companion detection down to the secondary confidence floor. This
+  avoids lowering the global threshold and limits additional false positives.
+- Stable regions survive three missed inference frames instead of one to avoid
+  brief exposure from detector flicker.
+- The censor remains regional; no full-screen fallback was enabled.
+- Windows x64 installer: 107,706,810 bytes (102.72 MiB), SHA-256
+  `EAF0C1766C6E7107DD48036163D0C2A1639C3623111E6CD269019CD73A80E56A`.
+
 ## Remaining gates
 
 - Measure the final installer/runtime footprint and benchmark a smaller

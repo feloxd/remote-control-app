@@ -21,6 +21,7 @@ let censorRunning = false;
 let censorOptions = null;
 let censorAiDisabledReason = null;
 const censorTracks = new Map();
+const MAX_CENSOR_MISSES = 3;
 
 const VALID_SPEEDS = ['slow', 'normal', 'fast'];
 
@@ -344,9 +345,25 @@ function regionIou(a, b) {
   return intersection / (a.w * a.h + b.w * b.h - intersection);
 }
 
-function padRegion(region, bounds, ratio = 0.08) {
-  const padX = region.w * ratio;
-  const padY = region.h * ratio;
+function censorPadding(region) {
+  switch (region.label) {
+    case 'FEMALE_BREAST_EXPOSED':
+      return { xRatio: 0.30, yRatio: 0.25, minimum: 18 };
+    case 'FEMALE_GENITALIA_EXPOSED':
+    case 'MALE_GENITALIA_EXPOSED':
+    case 'ANUS_EXPOSED':
+      return { xRatio: 0.24, yRatio: 0.24, minimum: 16 };
+    case 'BUTTOCKS_EXPOSED':
+      return { xRatio: 0.18, yRatio: 0.18, minimum: 14 };
+    default:
+      return { xRatio: 0.12, yRatio: 0.12, minimum: 12 };
+  }
+}
+
+function padRegion(region, bounds) {
+  const padding = censorPadding(region);
+  const padX = Math.max(padding.minimum, region.w * padding.xRatio);
+  const padY = Math.max(padding.minimum, region.h * padding.yRatio);
   const x = Math.max(0, region.x - padX);
   const y = Math.max(0, region.y - padY);
   const right = Math.min(bounds.width, region.x + region.w + padX);
@@ -392,7 +409,9 @@ function stabilizeCensorRegions(displayId, regions) {
   for (let index = 0; index < previous.length; index++) {
     if (used.has(index)) continue;
     const old = previous[index];
-    if ((old.misses || 0) < 1) next.push({ ...old, misses: (old.misses || 0) + 1 });
+    if ((old.misses || 0) < MAX_CENSOR_MISSES) {
+      next.push({ ...old, misses: (old.misses || 0) + 1 });
+    }
   }
 
   const limited = next.slice(0, 16);
@@ -660,4 +679,11 @@ module.exports = {
   censorScreen,
   showText,
   clearTopEffects,
+  __test: {
+    censorPadding,
+    padRegion,
+    stabilizeCensorRegions,
+    resetCensorTracks: () => censorTracks.clear(),
+    MAX_CENSOR_MISSES,
+  },
 };

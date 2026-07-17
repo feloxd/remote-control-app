@@ -153,7 +153,38 @@ function suppressOverlaps(detections, threshold) {
   return kept;
 }
 
-function parseDetections(tensor, input, confidence, nmsThreshold) {
+function isRelatedBreastDetection(candidate, primary) {
+  if (candidate.label !== 'FEMALE_BREAST_EXPOSED' || primary.label !== candidate.label) return false;
+  const candidateCenterX = candidate.x + candidate.w / 2;
+  const candidateCenterY = candidate.y + candidate.h / 2;
+  const primaryCenterX = primary.x + primary.w / 2;
+  const primaryCenterY = primary.y + primary.h / 2;
+  const largestWidth = Math.max(candidate.w, primary.w);
+  const largestHeight = Math.max(candidate.h, primary.h);
+  const sizeRatio = (candidate.w * candidate.h) / (primary.w * primary.h);
+  const horizontalDistance = Math.abs(candidateCenterX - primaryCenterX);
+  const verticalDistance = Math.abs(candidateCenterY - primaryCenterY);
+
+  return sizeRatio >= 0.35 && sizeRatio <= 2.85 &&
+    horizontalDistance >= Math.min(candidate.w, primary.w) * 0.35 &&
+    horizontalDistance <= largestWidth * 3.75 &&
+    verticalDistance <= largestHeight * 1.25;
+}
+
+function selectExplicitDetections(detections, confidence, secondaryConfidence) {
+  const primary = detections.filter((detection) => detection.score >= confidence);
+  const primaryBreasts = primary.filter((detection) => detection.label === 'FEMALE_BREAST_EXPOSED');
+  if (!primaryBreasts.length) return primary;
+
+  const companions = detections.filter((candidate) =>
+    candidate.score >= secondaryConfidence &&
+    candidate.score < confidence &&
+    primaryBreasts.some((seed) => isRelatedBreastDetection(candidate, seed))
+  );
+  return [...primary, ...companions].sort((a, b) => b.score - a.score);
+}
+
+function parseDetections(tensor, input, confidence, nmsThreshold, secondaryConfidence) {
   const output = outputAccessor(tensor);
   const detections = [];
 
@@ -168,7 +199,7 @@ function parseDetections(tensor, input, confidence, nmsThreshold) {
       }
     }
     const label = LABELS[classId];
-    if (score < confidence || !EXPLICIT_CLASSES.has(label)) continue;
+    if (score < secondaryConfidence || !EXPLICIT_CLASSES.has(label)) continue;
 
     const centerX = output.get(candidate, 0) * input.maxSide / MODEL_SIZE;
     const centerY = output.get(candidate, 1) * input.maxSide / MODEL_SIZE;
@@ -182,11 +213,17 @@ function parseDetections(tensor, input, confidence, nmsThreshold) {
     detections.push({ x, y, w, h, score, label });
   }
 
-  return suppressOverlaps(detections, nmsThreshold).slice(0, 16);
+  const suppressed = suppressOverlaps(detections, nmsThreshold);
+  return selectExplicitDetections(suppressed, confidence, secondaryConfidence).slice(0, 16);
 }
 
 async function detectExplicitRegions(image, options = {}) {
   const confidence = Math.min(0.9, Math.max(0.1, Number(options.confidence) || 0.35));
+  const configuredSecondary = Number(options.secondaryConfidence);
+  const secondaryConfidence = Math.min(
+    confidence,
+    Math.max(0.15, Number.isFinite(configuredSecondary) ? configuredSecondary : confidence * 0.52),
+  );
   const nmsThreshold = Math.min(0.9, Math.max(0.1, Number(options.iou) || 0.45));
   const { session, modelPath } = await getSession(options.modelPath);
   const input = prepareInput(image);
@@ -194,7 +231,7 @@ async function detectExplicitRegions(image, options = {}) {
   const results = await session.run({ [session.inputNames[0]]: input.tensor });
   const inferenceMs = performance.now() - started;
   const output = results[session.outputNames[0]];
-  const regions = parseDetections(output, input, confidence, nmsThreshold).map((region) => ({
+  const regions = parseDetections(output, input, confidence, nmsThreshold, secondaryConfidence).map((region) => ({
     x: Math.round(region.x),
     y: Math.round(region.y),
     w: Math.round(region.w),
@@ -210,4 +247,9 @@ function resetModel() {
   loadedModelPath = '';
 }
 
-module.exports = { detectExplicitRegions, resetModel, EXPLICIT_CLASSES };
+module.exports = {
+  detectExplicitRegions,
+  resetModel,
+  EXPLICIT_CLASSES,
+  __test: { isRelatedBreastDetection, selectExplicitDetections },
+};
