@@ -1,6 +1,6 @@
 {
   "name": "@remote-control/server",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "license": "AGPL-3.0",
   "main": "src/index.js",
   "scripts": {
@@ -12,11 +12,11 @@
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.1",
-    "express": "^4.18.2",
+    "express": "^4.22.3",
     "jsonwebtoken": "^9.0.2",
-    "socket.io": "^4.7.2"
+    "socket.io": "^4.8.4"
   },
   "devDependencies": {
-    "socket.io-client": "^4.7.2"
+    "socket.io-client": "^4.8.4"
   }
 }

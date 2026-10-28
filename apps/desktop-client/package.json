@@ -1,6 +1,6 @@
 {
   "name": "@remote-control/desktop-client",
-  "version": "1.2.1",
+  "version": "1.2.2",
   "license": "AGPL-3.0",
   "description": "Windows desktop client for Remote Control App.",
   "author": "ELORA2",
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "onnxruntime-node": "^1.27.0",
-    "socket.io-client": "^4.7.2",
+    "socket.io-client": "^4.8.4",
     "uiohook-napi": "^1.5.5"
   },
   "devDependencies": {

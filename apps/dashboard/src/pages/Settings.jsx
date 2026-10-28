@@ -35,7 +35,7 @@ export default function Settings() {
 
         <section className="settings-card settings-card--wide">
           <header><h2>Información</h2><p>Configuración de esta instalación.</p></header>
-          <div className="settings-info"><span>Versión del dashboard</span><strong>1.2.0</strong><span>Licencia</span><strong>GNU AGPL-3.0</strong><span>Procesamiento IA</span><strong>Local en el cliente</strong></div>
+          <div className="settings-info"><span>Versión del dashboard</span><strong>1.2.1</strong><span>Licencia</span><strong>GNU AGPL-3.0</strong><span>Procesamiento IA</span><strong>Local en el cliente</strong></div>
           <button className="settings-reset" onClick={settings.resetSettings}>Restablecer preferencias</button>
         </section>
       </div>
