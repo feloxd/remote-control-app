@@ -26,8 +26,8 @@ service based on this repository.
 ## Source offer
 
 The server exposes `/source`, which redirects to `SOURCE_CODE_URL`. Both the
-dashboard and Electron client display a prominent “Código fuente y licencias ·
-AGPL-3.0” link to that endpoint.
+dashboard and Electron client display a prominent "Código fuente y licencias ·
+AGPL-3.0" link to that endpoint.
 
 Do not release while `/source` returns HTTP 503. The configured URL must remain
 available for the deployed version and must provide the corresponding source,
@@ -41,15 +41,15 @@ npm.cmd run build --workspace=@remote-control/dashboard
 npm.cmd run build:client
 ```
 
-The AI-enabled release additionally needs the approved ONNX model and runtime
-packaging configuration. The current installer intentionally excludes both and
-falls back to the legacy regional detector.
+The AI-enabled Windows x64 release includes the approved ONNX model under
+`resources/models/` and the matching ONNX Runtime Windows x64 libraries. Other
+operating-system and architecture binaries are excluded from this installer.
 
 ## Verification
 
 - Run dashboard and Windows client builds.
 - Smoke-test login, session creation, Socket.IO connection, source-code link,
-  AI fallback, and cleanup on disconnect.
+  AI inference, file transfer, and cleanup on disconnect.
 - Run `npm audit` and document accepted residual findings.
 - Confirm no database, `.env`, private key, test image, or temporary model is
   staged.

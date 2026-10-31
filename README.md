@@ -51,6 +51,16 @@ Internet. No existen credenciales predeterminadas.
 const { ACTIONS } = require('@remote-control/shared/actions');
 ```
 
+## Dashboard y cliente Windows
+
+El dashboard incluye controles con estado, preferencias persistentes del
+censor y transferencias de archivos de hasta 25 MB hacia la carpeta autorizada
+`Descargas\Remote Control Files` del cliente. Los archivos se transmiten en
+fragmentos mediante Socket.IO y no se almacenan en el servidor.
+
+El instalador Windows x64 1.2.0 incluye NudeNet 320n y ONNX Runtime para ejecutar
+la detección regional de contenido explícito localmente en el equipo cliente.
+
 ## Código fuente
 
 El dashboard y el cliente muestran un enlace a `/source`. En despliegues

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import useSessionStore from '../store/sessionStore';
+import useSettingsStore from '../store/settingsStore';
 
 const ACK_TIMEOUT_MS = 8000;
 
@@ -11,11 +12,20 @@ export function useSocket() {
   const sessionCode = useSessionStore((s) => s.sessionCode);
   const setSessionStatus = useSessionStore((s) => s.setSessionStatus);
   const addLog = useSessionStore((s) => s.addLog);
+  const autoReconnect = useSettingsStore((s) => s.autoReconnect);
+  const isPreview = token === 'local-preview';
 
   useEffect(() => {
     if (!token || !sessionCode) return;
+    if (isPreview) {
+      setSessionStatus('active');
+      return;
+    }
 
-    const socket = io('/dash', { auth: { token } });
+    const socket = io('/dash', {
+      auth: { token },
+      reconnection: autoReconnect,
+    });
     socketRef.current = socket;
 
     socket.on('connect', () => {
@@ -56,9 +66,13 @@ export function useSocket() {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token, sessionCode]);
+  }, [token, sessionCode, isPreview, autoReconnect, setSessionStatus, addLog]);
 
   const dispatch = (action, payload = {}) => {
+    if (isPreview) {
+      addLog({ action, payload, timestamp: new Date().toISOString() });
+      return Promise.resolve({ success: true, preview: true });
+    }
     if (!socketRef.current?.connected) {
       return Promise.resolve({ success: false, error: 'Not connected' });
     }

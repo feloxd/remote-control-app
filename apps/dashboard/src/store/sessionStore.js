@@ -1,9 +1,12 @@
 import { create } from 'zustand';
 
+const previewMode = import.meta.env.DEV
+  && new URLSearchParams(window.location.search).get('preview') === '1';
+
 const useSessionStore = create((set) => ({
-  token: localStorage.getItem('rc_token') || null,
-  sessionCode: null,
-  sessionStatus: null,
+  token: previewMode ? 'local-preview' : (localStorage.getItem('rc_token') || null),
+  sessionCode: previewMode ? 'DEMO31' : null,
+  sessionStatus: previewMode ? 'active' : null,
   activityLog: [],
 
   setToken: (token) => {

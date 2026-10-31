@@ -7,6 +7,7 @@ dist/
 out/
 build/
 .cache/
+tmp/
 apps/desktop-client/test/models/*.onnx
 apps/desktop-client/test/out/
 
@@ -37,6 +38,7 @@ config.json
 *.db-wal
 *.db-shm
 apps/server/data/
+backups/
 
 # Credentials and private keys
 *.pem
